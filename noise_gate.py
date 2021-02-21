@@ -6,6 +6,8 @@ import note_decompose as nde
 import scipy.signal as signal
 import matplotlib.pyplot as plt
 import tftb.processing as tftb
+sudo pip install adaptfilt
+import adaptfilt as adpt
 
 
 def wave2vol(wave, spread=10, detect_type='peak'):
@@ -110,3 +112,77 @@ def noise_gate_PWVD(data, spread=1000):
 	new_data = new_data * volume_scale
 	
 	return new_data
+# -------------------------------------------------------------------------------------------#
+#y, e, w = nlms(u, d, M, step, eps=0.001, leak=0, initCoeffs=None, N=None, returnCoeffs=False)**
+#this function used the normalsied least mean square adaptive filtering methodon u minimising error on e=d-y where d is the desired signal
+# some of this code i undertand and other parts i dont but if we get this working/ adapted to our code i think it would then track and remove the unwanted signal, ive tried to adapt the start of it but have alot of question i need to ask about code first to do this :) 
+
+
+
+    u = oldlen  
+    d = newlen
+    M = 20  # No. of taps
+    step = 1  # Step size
+    y, e, w = nlms(u, d, M, step, N=N, returnCoeffs=True)
+    >>> y.shape == (N,)
+    True
+    >>> e.shape == (N,)
+    True
+    >>> w.shape == (N, M)
+    True
+    >>> # Calculate mean square weight error
+    >>> mswe = np.mean((w - coeffs)**2, axis=1)
+    >>> # Should never increase so diff should above be > 0
+    >>> diff = np.diff(mswe)
+    >>> (diff <= 1e-10).all()
+    True
+    
+   
+    # Max iteration check
+    if N is None:
+        N = len(u)-M+1
+    _pchk.checkIter(N, len(u)-M+1)
+
+    # Check len(d)
+    _pchk.checkDesiredSignal(d, N, M)
+
+    # Step check
+    _pchk.checkStep(step)
+
+    # Leakage check
+    _pchk.checkLeakage(leak)
+
+    # Init. coeffs check
+    if initCoeffs is None:
+        initCoeffs = np.zeros(M)
+    else:
+        _pchk.checkInitCoeffs(initCoeffs, M)
+
+    # Initialization
+    y = np.zeros(N)  # Filter output
+    e = np.zeros(N)  # Error signal
+    w = initCoeffs  # Initial filter coeffs
+    leakstep = (1 - step*leak)
+    if returnCoeffs:
+        W = np.zeros((N, M))  # Matrix to hold coeffs for each iteration
+
+    # Perform filtering
+    for n in xrange(N):
+        x = np.flipud(u[n:n+M])  # Slice to get view of M latest datapoints
+        y[n] = np.dot(x, w)
+        e[n] = d[n+M-1] - y[n]
+
+        normFactor = 1./(np.dot(x, x) + eps)
+        w = leakstep * w + step * normFactor * x * e[n]
+        y[n] = np.dot(x, w)
+        if returnCoeffs:
+            W[n] = w
+
+    if returnCoeffs:
+        w = W
+
+    return y, e, w
+
+
+
+
